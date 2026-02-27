@@ -7,13 +7,18 @@ const { deleteMultipleByUrls } = require('../utils/s3');
 exports.getAllFarmhouses = async (req, res, next) => {
     try {
         const {
-            city, minPrice, maxPrice, facilities, maxGuests,
+            city, subLocation, minPrice, maxPrice, facilities, maxGuests,
             search, sort, page = 1, limit = 12,
         } = req.query;
 
         const filter = { isActive: true };
 
         if (city) filter['location.city'] = { $regex: new RegExp(city, 'i') };
+
+        // Sub-location filter (only meaningful for Surat)
+        if (subLocation && subLocation.trim()) {
+            filter['location.subLocation'] = { $regex: new RegExp(subLocation.trim(), 'i') };
+        }
 
         if (minPrice || maxPrice) {
             filter.priceWeekday = {};
@@ -178,6 +183,22 @@ exports.getCities = async (req, res, next) => {
     try {
         const cities = await Farmhouse.distinct('location.city', { isActive: true });
         res.status(200).json({ success: true, data: cities.sort() });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// GET /api/farmhouses/sublocations/list?city=Surat
+exports.getSubLocations = async (req, res, next) => {
+    try {
+        const { city } = req.query;
+        const cityFilter = city
+            ? { isActive: true, 'location.city': { $regex: new RegExp(city, 'i') } }
+            : { isActive: true };
+        const subLocations = await Farmhouse.distinct('location.subLocation', cityFilter);
+        // Filter out empty strings
+        const filtered = subLocations.filter(s => s && s.trim()).sort();
+        res.status(200).json({ success: true, data: filtered });
     } catch (error) {
         next(error);
     }

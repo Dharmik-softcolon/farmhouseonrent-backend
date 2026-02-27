@@ -6,12 +6,14 @@ const {
     createFarmhouse,
     updateFarmhouse,
     deleteFarmhouse,
-    getCities
+    getCities,
+    getSubLocations
 } = require('../controllers/farmhouseController');
 const { protect, adminOnly } = require('../middleware/auth');
 const { validateFarmhouse, validateObjectId } = require('../middleware/validate');
 
 router.get('/cities/list', getCities);
+router.get('/sublocations/list', getSubLocations);
 router.get('/', getAllFarmhouses);
 router.get('/:id', validateObjectId, getFarmhouse);
 router.post('/', protect, adminOnly, validateFarmhouse, createFarmhouse);

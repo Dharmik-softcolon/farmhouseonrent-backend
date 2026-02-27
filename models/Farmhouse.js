@@ -28,6 +28,11 @@ const farmhouseSchema = new mongoose.Schema({
             required: [true, 'City is required'],
             trim: true
         },
+        subLocation: {
+            type: String,
+            trim: true,
+            default: ''
+        },
         fullAddress: {
             type: String,
             required: [true, 'Full address is required'],
@@ -92,6 +97,7 @@ const farmhouseSchema = new mongoose.Schema({
 });
 
 farmhouseSchema.index({ 'location.city': 1 });
+farmhouseSchema.index({ 'location.subLocation': 1 });
 farmhouseSchema.index({ priceWeekday: 1 });
 farmhouseSchema.index({ priceWeekend: 1 });
 farmhouseSchema.index({ averageRating: -1 });
