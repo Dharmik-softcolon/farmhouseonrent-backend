@@ -203,3 +203,87 @@ exports.getSubLocations = async (req, res, next) => {
         next(error);
     }
 };
+
+// POST /api/farmhouses/bulk (Admin) – CSV bulk upload
+exports.bulkCreateFarmhouses = async (req, res, next) => {
+    try {
+        const { farms } = req.body;
+
+        if (!Array.isArray(farms) || farms.length === 0) {
+            return res.status(400).json({ success: false, message: 'farms array is required and must not be empty' });
+        }
+        if (farms.length > 200) {
+            return res.status(400).json({ success: false, message: 'Maximum 200 farms per bulk upload' });
+        }
+
+        const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800';
+
+        const errors = [];
+        const docs = [];
+
+        farms.forEach((row, i) => {
+            const rowNum = i + 2; // 1-indexed + header row
+            const rowErrors = [];
+
+            if (!row.title || !String(row.title).trim()) rowErrors.push('title is required');
+            if (!row.description || !String(row.description).trim()) rowErrors.push('description is required');
+            if (!row.city || !String(row.city).trim()) rowErrors.push('city is required');
+            if (!row.fullAddress || !String(row.fullAddress).trim()) rowErrors.push('fullAddress is required');
+            if (!row.contactNumber || !/^[6-9]\d{9}$/.test(String(row.contactNumber).trim())) rowErrors.push('contactNumber must be a valid 10-digit Indian mobile');
+            if (!row.priceWeekday || isNaN(Number(row.priceWeekday)) || Number(row.priceWeekday) < 0) rowErrors.push('priceWeekday must be a non-negative number');
+            if (!row.priceWeekend || isNaN(Number(row.priceWeekend)) || Number(row.priceWeekend) < 0) rowErrors.push('priceWeekend must be a non-negative number');
+            if (!row.maxGuests || isNaN(Number(row.maxGuests)) || Number(row.maxGuests) < 1) rowErrors.push('maxGuests must be at least 1');
+
+            if (rowErrors.length > 0) {
+                errors.push({ row: rowNum, title: row.title || '(no title)', errors: rowErrors });
+                return;
+            }
+
+            // Parse facilities — comma-separated within a column
+            const facilities = row.facilities
+                ? String(row.facilities).split('|').map(f => f.trim()).filter(Boolean)
+                : [];
+
+            // Images: use provided URL(s) split by '|', or placeholder
+            const images = row.images
+                ? String(row.images).split('|').map(u => u.trim()).filter(Boolean)
+                : [PLACEHOLDER_IMAGE];
+
+            docs.push({
+                title: String(row.title).trim(),
+                description: String(row.description).trim(),
+                priceWeekday: Number(row.priceWeekday),
+                priceWeekend: Number(row.priceWeekend),
+                location: {
+                    city: String(row.city).trim(),
+                    subLocation: row.subLocation ? String(row.subLocation).trim() : '',
+                    fullAddress: String(row.fullAddress).trim(),
+                    googleMapLink: row.googleMapLink ? String(row.googleMapLink).trim() : '',
+                },
+                images,
+                videos: [],
+                facilities,
+                maxGuests: Number(row.maxGuests),
+                contactNumber: String(row.contactNumber).trim(),
+                isActive: true,
+            });
+        });
+
+        if (errors.length > 0 && docs.length === 0) {
+            return res.status(400).json({ success: false, message: 'All rows have errors', errors });
+        }
+
+        const inserted = await Farmhouse.insertMany(docs, { ordered: false });
+
+        res.status(201).json({
+            success: true,
+            message: `${inserted.length} farm(s) created successfully${errors.length > 0 ? `, ${errors.length} row(s) skipped` : ''}`,
+            inserted: inserted.length,
+            skipped: errors.length,
+            errors: errors.length > 0 ? errors : undefined,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
