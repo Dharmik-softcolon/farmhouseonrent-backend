@@ -54,12 +54,6 @@ const farmhouseSchema = new mongoose.Schema({
     },
     facilities: {
         type: [String],
-        enum: [
-            'pool', 'garden', 'ac', 'kitchen', 'parking', 'wifi',
-            'bbq', 'bonfire', 'games', 'gym', 'spa', 'pet_friendly',
-            'security', 'power_backup', 'waterpark', 'indoor_games',
-            'outdoor_games', 'music_system', 'projector', 'caretaker'
-        ],
         default: []
     },
     maxGuests: {
