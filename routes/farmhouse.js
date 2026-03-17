@@ -3,6 +3,7 @@ const router = express.Router();
 const {
     getAllFarmhouses,
     getFarmhouse,
+    getAdminFarmhouses,
     createFarmhouse,
     updateFarmhouse,
     deleteFarmhouse,
@@ -15,6 +16,7 @@ const { validateFarmhouse, validateObjectId } = require('../middleware/validate'
 
 router.get('/cities/list', getCities);
 router.get('/sublocations/list', getSubLocations);
+router.get('/admin/all', protect, adminOnly, getAdminFarmhouses);
 router.get('/', getAllFarmhouses);
 router.get('/:id', validateObjectId, getFarmhouse);
 router.post('/', protect, adminOnly, validateFarmhouse, createFarmhouse);
