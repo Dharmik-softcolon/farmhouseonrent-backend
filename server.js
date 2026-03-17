@@ -30,8 +30,8 @@ app.use(mongoSanitize());
 //     message: { success: false, message: 'Too many uploads, try again later' },
 // });
 
-app.use('/api/upload', uploadLimiter);
-app.use('/api/', apiLimiter);
+// app.use('/api/upload', uploadLimiter);
+// app.use('/api/', apiLimiter);
 
 // CORS
 app.use(cors({
