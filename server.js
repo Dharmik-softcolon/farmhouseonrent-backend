@@ -19,16 +19,16 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(mongoSanitize());
 
 // Rate limiting (higher for uploads)
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    message: { success: false, message: 'Too many requests' },
-});
-const uploadLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: { success: false, message: 'Too many uploads, try again later' },
-});
+// const apiLimiter = rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 200,
+//     message: { success: false, message: 'Too many requests' },
+// });
+// const uploadLimiter = rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 50,
+//     message: { success: false, message: 'Too many uploads, try again later' },
+// });
 
 app.use('/api/upload', uploadLimiter);
 app.use('/api/', apiLimiter);
