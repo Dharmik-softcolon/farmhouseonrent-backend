@@ -17,7 +17,7 @@ exports.createBooking = async (req, res, next) => {
         const booking = await BookingLead.create(req.body);
 
         const populatedBooking = await BookingLead.findById(booking._id)
-            .populate('farmhouseId', 'title contactNumber location');
+            .populate('farmhouseId', 'title contactNumber ownerContact location');
 
         res.status(201).json({
             success: true,
@@ -40,7 +40,7 @@ exports.getAllBookings = async (req, res, next) => {
 
         const [bookings, total] = await Promise.all([
             BookingLead.find(filter)
-                .populate('farmhouseId', 'title contactNumber location images')
+                .populate('farmhouseId', 'title contactNumber ownerContact location images')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(Number(limit))
@@ -78,6 +78,40 @@ exports.deleteBooking = async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: 'Booking lead deleted successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// PATCH /api/bookings/:id/status (Admin)
+exports.updateBookingStatus = async (req, res, next) => {
+    try {
+        const { status } = req.body;
+
+        if (!['Inquiry', 'Ongoing', 'Booked'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status'
+            });
+        }
+
+        const booking = await BookingLead.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true, runValidators: true }
+        ).populate('farmhouseId', 'title contactNumber ownerContact location');
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking lead not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: booking
         });
     } catch (error) {
         next(error);

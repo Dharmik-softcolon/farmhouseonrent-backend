@@ -25,6 +25,11 @@ const bookingLeadSchema = new mongoose.Schema({
         type: String,
         maxlength: [500, 'Message cannot exceed 500 characters'],
         default: ''
+    },
+    status: {
+        type: String,
+        enum: ['Inquiry', 'Ongoing', 'Booked'],
+        default: 'Inquiry'
     }
 }, {
     timestamps: true
