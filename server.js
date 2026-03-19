@@ -60,6 +60,9 @@ app.use('/api/bookings', require('./routes/booking'));
 app.use('/api/reviews', require('./routes/review'));
 app.use('/api/upload', require('./routes/upload'));
 
+// SEO
+app.use('/', require('./routes/seoRoutes'));
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.status(200).json({
