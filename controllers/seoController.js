@@ -1,53 +1,178 @@
 const Farmhouse = require('../models/Farmhouse');
 
+// ── This must be your FRONTEND domain, not API domain ──
+const SITE_URL = 'https://farmhouseonrent.in';
+const API_URL = process.env.API_URL || 'https://api.farmhouseonrent.in';
+
+// ─── Helper: format date to YYYY-MM-DD ───
+const formatDate = (date) => {
+    return date
+        ? new Date(date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+};
+
+// ─── Helper: escape XML special characters ───
+const escapeXml = (str) => {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+};
+
+// ─── Helper: build <url> block ───
+const buildUrl = ({ loc, lastmod, changefreq, priority, images = [] }) => {
+    let block = `
+  <url>
+    <loc>${escapeXml(loc)}</loc>`;
+
+    if (lastmod) {
+        block += `
+    <lastmod>${lastmod}</lastmod>`;
+    }
+
+    block += `
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>`;
+
+    // ── Image sitemap ──
+    images.forEach(img => {
+        if (img && typeof img === 'string' && img.startsWith('http')) {
+            block += `
+    <image:image>
+      <image:loc>${escapeXml(img)}</image:loc>
+    </image:image>`;
+        }
+    });
+
+    block += `
+  </url>`;
+
+    return block;
+};
+
 /**
- * @desc    Generate and serve dynamic sitemap.xml
+ * @desc    Generate dynamic sitemap.xml
  * @route   GET /sitemap.xml
  * @access  Public
  */
 exports.getSitemap = async (req, res, next) => {
     try {
-        const baseUrl = process.env.CLIENT_URL || 'https://farmhouseonrent.in';
-        
-        // Fetch all active farmhouses
+        // ── Allow cross-origin (frontend domain needs this) ──
+        res.set('Access-Control-Allow-Origin', SITE_URL);
+
+        // ── Fetch all active farmhouses ──
         const farmhouses = await Farmhouse.find({ isActive: true })
-            .select('_id updatedAt')
+            .select('_id title location images updatedAt')
             .lean();
 
-        // Start XML string
-        let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/farmhouses</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`;
+        // ── Get unique cities from DB ──
+        const cities = [
+            ...new Set(
+                farmhouses
+                    .map(f => f.location?.city)
+                    .filter(Boolean)
+            )
+        ];
 
-        // Add dynamic farmhouse pages
-        farmhouses.forEach(farm => {
-            const lastMod = farm.updatedAt ? farm.updatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            xml += `
-  <url>
-    <loc>${baseUrl}/farmhouse/${farm._id}</loc>
-    <lastmod>${lastMod}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>`;
+        // ── Get unique Surat sub-locations ──
+        const suratSubLocations = [
+            ...new Set(
+                farmhouses
+                    .filter(f =>
+                        f.location?.city?.toLowerCase() === 'surat' &&
+                        f.location?.subLocation
+                    )
+                    .map(f => f.location.subLocation)
+                    .filter(Boolean)
+            )
+        ];
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // ── Most recently updated date ──
+        const sortedFarms = [...farmhouses].sort(
+            (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+        );
+        const latestDate = sortedFarms[0]
+            ? formatDate(sortedFarms[0].updatedAt)
+            : today;
+
+        // ════════════════════════════════════════
+        // BUILD XML — All URLs point to FRONTEND
+        // ════════════════════════════════════════
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
+
+        // ── 1. Homepage ──
+        xml += buildUrl({
+            loc: `${SITE_URL}/`,
+            lastmod: latestDate,
+            changefreq: 'daily',
+            priority: '1.0',
         });
 
-        // Close XML string
+        // ── 2. All Farmhouses listing page ──
+        xml += buildUrl({
+            loc: `${SITE_URL}/farmhouses`,
+            lastmod: latestDate,
+            changefreq: 'daily',
+            priority: '0.9',
+        });
+
+        // ── 3. City filter pages ──
+        cities.forEach(city => {
+            xml += buildUrl({
+                loc: `${SITE_URL}/farmhouses?city=${encodeURIComponent(city)}`,
+                lastmod: latestDate,
+                changefreq: 'weekly',
+                priority: '0.8',
+            });
+        });
+
+        // ── 4. Surat sub-location pages ──
+        suratSubLocations.forEach(subLoc => {
+            xml += buildUrl({
+                loc: `${SITE_URL}/farmhouses?city=Surat&subLocation=${encodeURIComponent(subLoc)}`,
+                lastmod: latestDate,
+                changefreq: 'weekly',
+                priority: '0.7',
+            });
+        });
+
+        // ── 5. Individual farmhouse detail pages ──
+        farmhouses.forEach(farm => {
+            const imageUrls = (farm.images || [])
+                .slice(0, 5)
+                .filter(img => img && img.startsWith('http'));
+
+            xml += buildUrl({
+                loc: `${SITE_URL}/farmhouse/${farm._id}`,
+                lastmod: formatDate(farm.updatedAt),
+                changefreq: 'weekly',
+                priority: '0.7',
+                images: imageUrls,
+            });
+        });
+
         xml += `
 </urlset>`;
 
-        // Send response
-        res.header('Content-Type', 'application/xml');
-        res.status(200).send(xml);
+        // ── Headers ──
+        res.set({
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600, s-maxage=43200',
+            'X-Robots-Tag': 'noindex',
+        });
+
+        return res.status(200).send(xml);
+
     } catch (error) {
+        console.error('❌ Sitemap generation error:', error);
         next(error);
     }
 };
