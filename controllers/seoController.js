@@ -176,3 +176,39 @@ exports.getSitemap = async (req, res, next) => {
         next(error);
     }
 };
+
+// ═══════════════════════════════════════
+// GET /robots.txt
+// ═══════════════════════════════════════
+exports.getRobots = (req, res) => {
+    const robotsTxt = `User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /admin/login
+Disallow: /admin/dashboard
+Disallow: /admin/add-farmhouse
+Disallow: /admin/edit-farmhouse/
+Disallow: /admin/bookings
+Disallow: /admin/reviews
+Disallow: /admin/bulk-upload
+Disallow: /*?minPrice=
+Disallow: /*?maxPrice=
+Disallow: /*?sort=price_asc
+Disallow: /*?sort=price_desc
+
+Allow: /farmhouses
+Allow: /farmhouses?city=
+Allow: /farmhouse/
+
+Crawl-delay: 1
+
+Sitemap: ${SITE_URL}/sitemap.xml`;
+
+    res.set({
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'public, max-age=86400',
+    });
+
+    return res.status(200).send(robotsTxt);
+};
