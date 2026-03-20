@@ -1,14 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const {
-    getSitemap,
-    getRobots,
-} = require('../controllers/seoController');
+const seoController = require('../controllers/seoController');
 
-// ── Dynamic sitemap ──
-router.get('/sitemap.xml', getSitemap);
-
-// ── Dynamic robots.txt ──
-router.get('/robots.txt', getRobots);
+router.get('/sitemap.xml', seoController.getSitemap);
+router.get('/robots.txt', seoController.getRobots);
+router.get('/sitemap-data', seoController.getSitemapData);  // ← ADD THIS
 
 module.exports = router;

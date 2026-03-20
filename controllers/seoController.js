@@ -212,3 +212,46 @@ Sitemap: ${SITE_URL}/sitemap.xml`;
 
     return res.status(200).send(robotsTxt);
 };
+
+// ═══════════════════════════════════════
+// GET /sitemap-data (for build-time generation)
+// ═══════════════════════════════════════
+exports.getSitemapData = async (req, res, next) => {
+    try {
+        const farmhouses = await Farmhouse.find({ isActive: true })
+            .select('_id updatedAt location images')
+            .lean();
+
+        const cities = [...new Set(
+            farmhouses.map(f => f.location?.city).filter(Boolean)
+        )];
+
+        const suratSubLocations = [...new Set(
+            farmhouses
+                .filter(f =>
+                    f.location?.city?.toLowerCase() === 'surat' &&
+                    f.location?.subLocation
+                )
+                .map(f => f.location.subLocation)
+                .filter(Boolean)
+        )];
+
+        res.set('Cache-Control', 'public, max-age=3600');
+
+        return res.json({
+            success: true,
+            cities,
+            suratSubLocations,
+            farmhouses: farmhouses.map(f => ({
+                id: f._id,
+                updatedAt: f.updatedAt,
+                images: (f.images || [])
+                    .slice(0, 5)
+                    .filter(img => img?.startsWith('http'))
+            }))
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
