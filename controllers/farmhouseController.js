@@ -1,4 +1,5 @@
 const Farmhouse = require('../models/Farmhouse');
+const { generateSlug } = require('../models/Farmhouse');
 const Review = require('../models/Review');
 const BookingLead = require('../models/BookingLead');
 const { deleteMultipleByUrls } = require('../utils/s3');
@@ -63,10 +64,19 @@ exports.getAllFarmhouses = async (req, res, next) => {
     }
 };
 
-// GET /api/farmhouses/:id
+// GET /api/farmhouses/:slug  (also accepts legacy Mongo ID as fallback)
 exports.getFarmhouse = async (req, res, next) => {
     try {
-        const farmhouse = await Farmhouse.findById(req.params.id).lean();
+        const { slug } = req.params;
+
+        // Try slug first
+        let farmhouse = await Farmhouse.findOne({ slug }).lean();
+
+        // Fallback: if it looks like a Mongo ID and slug lookup missed, try findById
+        if (!farmhouse && /^[a-f\d]{24}$/i.test(slug)) {
+            farmhouse = await Farmhouse.findById(slug).lean();
+        }
+
         if (!farmhouse) {
             return res.status(404).json({ success: false, message: 'Farmhouse not found' });
         }
@@ -275,8 +285,18 @@ exports.bulkCreateFarmhouses = async (req, res, next) => {
                 ? String(row.images).split('|').map(u => u.trim()).filter(Boolean)
                 : [PLACEHOLDER_IMAGE];
 
+            // Generate a unique slug for this bulk row
+            const baseSlug = generateSlug(String(row.title).trim());
+            let slug = baseSlug;
+            let counter = 1;
+            while (docs.some(d => d.slug === slug)) {
+                counter++;
+                slug = `${baseSlug}-${counter}`;
+            }
+
             docs.push({
                 title: String(row.title).trim(),
+                slug,
                 description: String(row.description).trim(),
                 priceWeekday: Number(row.priceWeekday),
                 priceWeekend: Number(row.priceWeekend),

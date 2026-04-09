@@ -65,7 +65,7 @@ exports.getSitemap = async (req, res, next) => {
 
         // ── Fetch all active farmhouses ──
         const farmhouses = await Farmhouse.find({ isActive: true })
-            .select('_id title location images updatedAt')
+            .select('_id slug title location images updatedAt')
             .lean();
 
         // ── Get unique cities from DB ──
@@ -151,7 +151,7 @@ exports.getSitemap = async (req, res, next) => {
                 .filter(img => img && img.startsWith('http'));
 
             xml += buildUrl({
-                loc: `${SITE_URL}/farmhouse/${farm._id}`,
+                loc: `${SITE_URL}/farmhouse/${farm.slug || farm._id}`,
                 lastmod: formatDate(farm.updatedAt),
                 changefreq: 'weekly',
                 priority: '0.7',
@@ -219,7 +219,7 @@ Sitemap: ${SITE_URL}/sitemap.xml`;
 exports.getSitemapData = async (req, res, next) => {
     try {
         const farmhouses = await Farmhouse.find({ isActive: true })
-            .select('_id updatedAt location images')
+            .select('_id slug updatedAt location images')
             .lean();
 
         const cities = [...new Set(
@@ -244,6 +244,7 @@ exports.getSitemapData = async (req, res, next) => {
             suratSubLocations,
             farmhouses: farmhouses.map(f => ({
                 id: f._id,
+                slug: f.slug,
                 updatedAt: f.updatedAt,
                 images: (f.images || [])
                     .slice(0, 5)

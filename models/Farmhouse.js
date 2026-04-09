@@ -1,11 +1,30 @@
 const mongoose = require('mongoose');
 
+// ─── Slug helper ───────────────────────────────────────────────────────────
+function generateSlug(name) {
+    return name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')   // remove special chars
+        .replace(/\s+/g, '-')            // spaces → hyphens
+        .replace(/-+/g, '-')             // collapse multiple hyphens
+        .replace(/^-+|-+$/g, '');        // trim leading/trailing hyphens
+}
+
 const farmhouseSchema = new mongoose.Schema({
     title: {
         type: String,
         required: [true, 'Title is required'],
         trim: true,
         maxlength: [150, 'Title cannot exceed 150 characters']
+    },
+    // ─── SEO Slug ───────────────────────────────────────────────────────────
+    slug: {
+        type: String,
+        unique: true,
+        lowercase: true,
+        trim: true,
+        index: true,
     },
     description: {
         type: String,
@@ -107,4 +126,29 @@ farmhouseSchema.index({ priceWeekend: 1 });
 farmhouseSchema.index({ averageRating: -1 });
 farmhouseSchema.index({ title: 'text', description: 'text', 'location.city': 'text' });
 
-module.exports = mongoose.model('Farmhouse', farmhouseSchema);
+// ─── Auto-generate slug before saving ──────────────────────────────────────
+farmhouseSchema.pre('validate', async function (next) {
+    // Only regenerate if slug is missing OR title changed
+    if (this.slug && !this.isModified('title')) return next();
+
+    const baseSlug = generateSlug(this.title || '');
+    if (!baseSlug) return next();
+
+    // Check for collisions and append -2, -3 … until unique
+    let slug = baseSlug;
+    let counter = 1;
+    while (true) {
+        const existing = await mongoose.model('Farmhouse').findOne({ slug, _id: { $ne: this._id } });
+        if (!existing) break;
+        counter++;
+        slug = `${baseSlug}-${counter}`;
+    }
+
+    this.slug = slug;
+    next();
+});
+
+const Farmhouse = mongoose.model('Farmhouse', farmhouseSchema);
+
+module.exports = Farmhouse;
+module.exports.generateSlug = generateSlug;

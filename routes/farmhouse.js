@@ -18,7 +18,7 @@ router.get('/cities/list', getCities);
 router.get('/sublocations/list', getSubLocations);
 router.get('/admin/all', protect, adminOnly, getAdminFarmhouses);
 router.get('/', getAllFarmhouses);
-router.get('/:id', validateObjectId, getFarmhouse);
+router.get('/:slug', getFarmhouse);
 router.post('/', protect, adminOnly, validateFarmhouse, createFarmhouse);
 router.post('/bulk', protect, adminOnly, bulkCreateFarmhouses);
 router.put('/:id', protect, adminOnly, validateObjectId, updateFarmhouse);

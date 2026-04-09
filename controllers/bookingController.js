@@ -17,7 +17,7 @@ exports.createBooking = async (req, res, next) => {
         const booking = await BookingLead.create(req.body);
 
         const populatedBooking = await BookingLead.findById(booking._id)
-            .populate('farmhouseId', 'title contactNumber ownerContact location');
+            .populate('farmhouseId', 'slug title contactNumber ownerContact location');
 
         res.status(201).json({
             success: true,
@@ -40,7 +40,7 @@ exports.getAllBookings = async (req, res, next) => {
 
         const [bookings, total] = await Promise.all([
             BookingLead.find(filter)
-                .populate('farmhouseId', 'title contactNumber ownerContact location images')
+                .populate('farmhouseId', 'slug title contactNumber ownerContact location images')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(Number(limit))
@@ -100,7 +100,7 @@ exports.updateBookingStatus = async (req, res, next) => {
             req.params.id,
             { status },
             { new: true, runValidators: true }
-        ).populate('farmhouseId', 'title contactNumber ownerContact location');
+        ).populate('farmhouseId', 'slug title contactNumber ownerContact location');
 
         if (!booking) {
             return res.status(404).json({

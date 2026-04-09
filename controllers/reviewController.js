@@ -41,7 +41,7 @@ exports.createReview = async (req, res, next) => {
         });
 
         const populatedReview = await Review.findById(review._id)
-            .populate('farmhouseId', 'title');
+            .populate('farmhouseId', 'slug title');
 
         res.status(201).json({ success: true, data: populatedReview });
     } catch (error) {
@@ -115,7 +115,7 @@ exports.getAllReviews = async (req, res, next) => {
 
         const skip = (Number(page) - 1) * Number(limit);
         const [reviews, total] = await Promise.all([
-            Review.find(filter).populate('farmhouseId', 'title location images').sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+            Review.find(filter).populate('farmhouseId', 'slug title location images').sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
             Review.countDocuments(filter),
         ]);
 
